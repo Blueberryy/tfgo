@@ -5,6 +5,168 @@
 
 #include <tf2>
 
+
+/**
+* Music kit sound types.
+*/
+enum TFGOMusicType
+{
+	Music_BombPlanted, 
+	Music_BombTenSecCount, 
+	Music_LostRound, 
+	Music_RoundTenSecCount, 
+	Music_WonRound, 
+	Music_StartAction, 
+	Music_StartRound, 
+	Music_RoundMVPAnthem
+}
+
+/**
+* Music kits are responsible for playing music in the game mode.
+*/
+methodmap TFGOMusicKit
+{
+	/**
+	* Whether this is a default music kit.
+	*
+	* Default music kits can be randomly assigned to newly connected players.
+	*/
+	property bool IsDefault
+	{
+		public native get();
+		public native set(bool val);
+	}
+	
+	/**
+	* Creates a new music kit with the specified ID.
+	*
+	* @param id	The ID used to uniquely identify this music kit
+	* @return	TFGOMusicKit methodmap
+	*/
+	public native TFGOMusicKit(char[] id);
+	
+	/**
+	* Gets the name of this music kit.
+	*
+	* @param buffer	The buffer to store the name in
+	* @param length	The size of the buffer
+	* @noreturn
+	*/
+	public native void GetName(char[] buffer, int length);
+	
+	/**
+	* Sets the name of this music kit.
+	*
+	* @param name	The name
+	* @noreturn
+	*/
+	public native void SetName(char[] name);
+	
+	/**
+	* Gets the music kit sounds for a specified sound type.
+	*
+	* @param type	The music type
+	* @return		An ArrayList of sounds or null
+	*/
+	public native ArrayList GetSounds(TFGOMusicType type);
+	
+	/**
+	* Sets the music kit sounds for a specified sound type.
+	*
+	* @note This WILL override any previously added sounds!
+	* @param sounds	An ArrayList of sounds
+	* @param type	The type of sounds in the list
+	* @noreturn
+	*/
+	public native void SetSounds(ArrayList sounds, TFGOMusicType type);
+	
+	/**
+	* Adds a sound for a specified sound type.
+	*
+	* @param sound	The sound to add
+	* @param type	The type of sound to add
+	*/
+	public native void AddSound(char[] sound, TFGOMusicType type);
+	
+	/**
+	* Removes a sound for a specified sound type.
+	*
+	* @param sound	The sound to remove
+	* @param type	The type of sound to remove
+	*/
+	public native void RemoveSound(char[] sound, TFGOMusicType type);
+	
+	public int GetRandomMusicFile(TFGOMusicType type, char[] buffer, int length)
+	{
+		ArrayList sounds = this.GetSounds(type);
+		return sounds.GetString(GetRandomInt(0, sounds.Length), buffer, length);
+	}
+	
+	public void EmitMusicToClient(int client, TFGOMusicType type)
+	{
+		char sound[PLATFORM_MAX_PATH];
+		if (this.GetRandomMusicFile(type, sound, sizeof(sound)) > 0)
+			EmitSoundToClient(client, sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
+	}
+	
+	public void EmitMusicToClients(const int[] clients, int numClients, TFGOMusicType type)
+	{
+		char sound[PLATFORM_MAX_PATH];
+		if (this.GetRandomMusicFile(type, sound, sizeof(sound)) > 0)
+			EmitSound(clients, numClients, sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
+	}
+	
+	public void EmitMusicToAll(TFGOMusicType type)
+	{
+		char sound[PLATFORM_MAX_PATH];
+		if (this.GetRandomMusicFile(type, sound, sizeof(sound)) > 0)
+			EmitSoundToAll(sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
+	}
+	
+	public void StopMusicForClient(int client, TFGOMusicType type)
+	{
+		ArrayList sounds = this.GetSounds(type);
+		for (int i = 0; i < sounds.Length; i++)
+		{
+			char sound[PLATFORM_MAX_PATH];
+			if (sounds.GetString(i, sound, sizeof(sound)) > 0)
+				StopSound(client, SNDCHAN_STATIC, sound);
+		}
+	}
+	
+	public void StopMusicForClients(const int[] clients, int numClients, TFGOMusicType type)
+	{
+		for (int i = 0; i < numClients; i++)
+		{
+			this.StopMusicForClient(clients[i], type);
+		}
+	}
+	
+	public void StopMusicForAll(TFGOMusicType type)
+	{
+		for (int client = 1; client <= MaxClients; client++)
+		{
+			this.StopMusicForClient(client, type);
+		}
+	}
+	
+	public void PrepareMusicKit()
+	{
+		for (int type = 0; type < view_as<int>(TFGOMusicType); type++)
+		{
+			ArrayList sounds = this.GetSounds(view_as<TFGOMusicType>(type));
+			for (int i = 0; i < sounds.Length; i++)
+			{
+				char sound[PLATFORM_MAX_PATH];
+				sounds.GetString(i, sound, sizeof(sound));
+				AddFileToDownloadsTable(sound);
+				StrCat("#", sizeof(sound), sound);
+				PrecacheSound(sound);
+			}
+		}
+	}
+}
+
 /**
  * Forward called when the bomb has been planted.
  *
@@ -72,6 +234,16 @@ public SharedPlugin __pl_tfgo =
 #if !defined REQUIRE_PLUGIN
 public __pl_tfgo_SetNTVOptional()
 {
+	MarkNativeAsOptional("TFGOMusicKit.IsDefault.get");
+	MarkNativeAsOptional("TFGOMusicKit.IsDefault.set");
+	MarkNativeAsOptional("TFGOMusicKit.TFGOMusicKit");
+	MarkNativeAsOptional("TFGOMusicKit.GetName");
+	MarkNativeAsOptional("TFGOMusicKit.SetName");
+	MarkNativeAsOptional("TFGOMusicKit.GetSounds");
+	MarkNativeAsOptional("TFGOMusicKit.SetSounds");
+	MarkNativeAsOptional("TFGOMusicKit.AddSound");
+	MarkNativeAsOptional("TFGOMusicKit.RemoveSound");
+	
 	MarkNativeAsOptional("TFGO_GetWeaponCost");
 }
 #endif
