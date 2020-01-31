@@ -7,7 +7,7 @@
 
 
 /**
-* Music kit sound types.
+* Music kit sound types
 */
 enum TFGOMusicType
 {
@@ -22,14 +22,14 @@ enum TFGOMusicType
 }
 
 /**
-* Music kits are responsible for playing music in the game mode.
+* Music kits are a collection of sounds that can be used to play music to one or more clients.
 */
 methodmap TFGOMusicKit
 {
 	/**
 	* Whether this is a default music kit.
 	*
-	* Default music kits can be randomly assigned to newly connected players.
+	* Default music kits have a chance to be assigned to players at the start of the game.
 	*/
 	property bool IsDefault
 	{
@@ -102,34 +102,13 @@ methodmap TFGOMusicKit
 		return sounds.GetString(GetRandomInt(0, sounds.Length), buffer, length);
 	}
 	
-	public void EmitMusicToClient(int client, TFGOMusicType type)
-	{
-		char sound[PLATFORM_MAX_PATH];
-		if (this.GetRandomMusicFile(type, sound, sizeof(sound)) > 0)
-			EmitSoundToClient(client, sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
-	}
-	
-	public void EmitMusicToClients(const int[] clients, int numClients, TFGOMusicType type)
-	{
-		char sound[PLATFORM_MAX_PATH];
-		if (this.GetRandomMusicFile(type, sound, sizeof(sound)) > 0)
-			EmitSound(clients, numClients, sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
-	}
-	
-	public void EmitMusicToAll(TFGOMusicType type)
-	{
-		char sound[PLATFORM_MAX_PATH];
-		if (this.GetRandomMusicFile(type, sound, sizeof(sound)) > 0)
-			EmitSoundToAll(sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
-	}
-	
 	public void StopMusicForClient(int client, TFGOMusicType type)
 	{
 		ArrayList sounds = this.GetSounds(type);
 		for (int i = 0; i < sounds.Length; i++)
 		{
 			char sound[PLATFORM_MAX_PATH];
-			if (sounds.GetString(i, sound, sizeof(sound)) > 0)
+			if (sounds.GetString(i, sound, sizeof(sound)))
 				StopSound(client, SNDCHAN_STATIC, sound);
 		}
 	}
@@ -150,6 +129,72 @@ methodmap TFGOMusicKit
 		}
 	}
 	
+	public void StopActiveMusic(TFGOMusicType type)
+	{
+		switch (type)
+		{
+			case Music_BombPlanted:
+			{
+				this.StopMusicForAll(Music_StartAction);
+				this.StopMusicForAll(Music_RoundTenSecCount);
+			}
+			case Music_BombTenSecCount:
+			{
+				this.StopMusicForAll(Music_BombPlanted);
+			}
+			case Music_StartAction:
+			{
+				this.StopMusicForAll(Music_StartRound);
+			}
+			case Music_StartRound:
+			{
+				this.StopMusicForAll(Music_WonRound);
+				this.StopMusicForAll(Music_LostRound);
+			}
+			case Music_RoundTenSecCount:
+			{
+				this.StopMusicForAll(Music_StartAction);
+			}
+			case Music_WonRound, Music_LostRound, Music_RoundMVPAnthem:
+			{
+				this.StopMusicForAll(Music_StartAction);
+				this.StopMusicForAll(Music_BombPlanted);
+				this.StopMusicForAll(Music_RoundTenSecCount);
+				this.StopMusicForAll(Music_BombTenSecCount);
+			}
+		}
+	}
+	
+	public void EmitMusicToClient(int client, TFGOMusicType type)
+	{
+		char sound[PLATFORM_MAX_PATH];
+		if (this.GetRandomMusicFile(type, sound, sizeof(sound)))
+		{
+			this.StopActiveMusic(type);
+			EmitSoundToClient(client, sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
+		}
+	}
+	
+	public void EmitMusicToClients(const int[] clients, int numClients, TFGOMusicType type)
+	{
+		char sound[PLATFORM_MAX_PATH];
+		if (this.GetRandomMusicFile(type, sound, sizeof(sound)))
+		{
+			this.StopActiveMusic(type);
+			EmitSound(clients, numClients, sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
+		}
+	}
+	
+	public void EmitMusicToAll(TFGOMusicType type)
+	{
+		char sound[PLATFORM_MAX_PATH];
+		if (this.GetRandomMusicFile(type, sound, sizeof(sound)))
+		{
+			this.StopActiveMusic(type);
+			EmitSoundToAll(sound, _, SNDCHAN_STATIC, SNDLEVEL_NONE);
+		}
+	}
+	
 	public void PrepareMusicKit()
 	{
 		for (int type = 0; type < view_as<int>(TFGOMusicType); type++)
@@ -158,10 +203,13 @@ methodmap TFGOMusicKit
 			for (int i = 0; i < sounds.Length; i++)
 			{
 				char sound[PLATFORM_MAX_PATH];
-				sounds.GetString(i, sound, sizeof(sound));
-				AddFileToDownloadsTable(sound);
-				StrCat("#", sizeof(sound), sound);
-				PrecacheSound(sound);
+				if (sounds.GetString(i, sound, sizeof(sound)))
+				{
+					AddFileToDownloadsTable(sound);
+					StrCat("#", sizeof(sound), sound); //prepend music char
+					PrecacheSound(sound);
+					sounds.SetString(i, sound); //update sound list with added music char
+				}
 			}
 		}
 	}

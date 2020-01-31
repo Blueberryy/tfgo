@@ -70,23 +70,16 @@ public Action Event_Pre_Teamplay_Broadcast_Audio(Event event, const char[] name,
 	
 	if (strncmp(sound, "Game.", 5) == 0)
 	{
-		g_CurrentMusicKit.StopMusicForAll(Music_StartAction);
-		g_CurrentMusicKit.StopMusicForAll(Music_BombPlanted);
-		g_CurrentMusicKit.StopMusicForAll(Music_RoundTenSecCount);
-		g_CurrentMusicKit.StopMusicForAll(Music_BombTenSecCount);
-		
-		// Playing sound directly instead of rewriting event so we can control when to stop it
 		if (StrEqual(sound, "Game.YourTeamWon"))
-			g_CurrentMusicKit.PlayMusicToTeam(team, Music_WonRound);
+			PlayTeamClientMusicKits(team, Music_WonRound);
 		else if (StrEqual(sound, "Game.YourTeamLost") || StrEqual(sound, "Game.Stalemate"))
-			g_CurrentMusicKit.PlayMusicToTeam(team, Music_LostRound);
+			PlayTeamClientMusicKits(team, Music_LostRound);
 		
 		return Plugin_Handled;
 	}
 	else if (StrEqual(sound, "Announcer.AM_RoundStartRandom"))
 	{
-		g_CurrentMusicKit.StopMusicForAll(Music_StartRound);
-		g_CurrentMusicKit.PlayMusicToAll(Music_StartAction);
+		PlayAllClientMusicKits(Music_StartAction);
 	}
 	
 	return Plugin_Continue;

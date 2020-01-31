@@ -185,12 +185,10 @@ ConVar tf_weapon_criticals_melee;
 ConVar mp_bonusroundtime;
 
 
-#include "tfgo/musickits.sp"
-MusicKit g_CurrentMusicKit;
-
 #include "tfgo/stocks.sp"
 #include "tfgo/config.sp"
 #include "tfgo/methodmaps.sp"
+#include "tfgo/musickits.sp"
 #include "tfgo/sound.sp"
 #include "tfgo/buymenu.sp"
 #include "tfgo/buyzone.sp"
@@ -314,10 +312,6 @@ public void OnMapStart()
 	PrecacheSounds();
 	PrecacheModels();
 	PrecacheParticleSystems();
-	PrecacheMusicKits();
-	
-	// Pick random music kit for the game
-	ChooseRandomMusicKit();
 	
 	if (FindEntityByClassname(MaxClients + 1, "func_respawnroom") > -1)
 	{
@@ -448,16 +442,6 @@ public void OnGameFrame()
 		float freq = max(0.1 + 0.9 * complete, 0.15);
 		g_BombNextBeepTime = GetGameTime() + freq;
 	}
-}
-
-public void ChooseRandomMusicKit()
-{
-	StringMapSnapshot snapshot = g_AvailableMusicKits.Snapshot();
-	char name[PLATFORM_MAX_PATH];
-	snapshot.GetKey(GetRandomInt(0, snapshot.Length - 1), name, sizeof(name));
-	delete snapshot;
-	
-	g_AvailableMusicKits.GetArray(name, g_CurrentMusicKit, sizeof(g_CurrentMusicKit));
 }
 
 public void OnEntityCreated(int entity, const char[] classname)
@@ -667,9 +651,7 @@ public Action Event_Teamplay_Round_Start(Event event, const char[] name, bool do
 	g_IsBonusRoundActive = false;
 	g_IsMainRoundActive = false;
 	
-	g_CurrentMusicKit.StopMusicForAll(Music_WonRound);
-	g_CurrentMusicKit.StopMusicForAll(Music_LostRound);
-	g_CurrentMusicKit.PlayMusicToAll(Music_StartRound);
+	PlayAllClientMusicKits(Music_StartRound);
 	
 	// Bomb can freely tick and explode through the bonus time and we cancel it here
 	g_IsBombTicking = false;
@@ -711,8 +693,7 @@ public Action Timer_PlayTenSecondRoundWarning(Handle timer)
 {
 	if (g_TenSecondRoundTimer != timer)return;
 	
-	g_CurrentMusicKit.StopMusicForAll(Music_StartAction);
-	g_CurrentMusicKit.PlayMusicToAll(Music_RoundTenSecCount);
+	PlayAllClientMusicKits(Music_RoundTenSecCount);
 }
 
 public Action Event_Teamplay_Point_Captured(Event event, const char[] name, bool dontBroadcast)
@@ -788,9 +769,7 @@ void PlantBomb(TFTeam team, int cpIndex, ArrayList cappers)
 	g_BombDetonationTimer = CreateTimer(tfgo_bombtimer.FloatValue, Timer_DetonateBomb, _, TIMER_FLAG_NO_MAPCHANGE);
 	
 	// Play Sounds
-	g_CurrentMusicKit.StopMusicForAll(Music_StartAction);
-	g_CurrentMusicKit.StopMusicForAll(Music_RoundTenSecCount);
-	g_CurrentMusicKit.PlayMusicToAll(Music_BombPlanted);
+	PlayAllClientMusicKits(Music_BombPlanted);
 	EmitGameSoundToAll(GAMESOUND_ANNOUNCER_BOMB_PLANTED);
 	EmitBombSeeGameSounds();
 	
@@ -810,8 +789,7 @@ public Action Timer_PlayTenSecondBombWarning(Handle timer)
 {
 	if (g_TenSecondBombTimer != timer || !g_IsMainRoundActive) return;
 	
-	g_CurrentMusicKit.StopMusicForAll(Music_BombPlanted);
-	g_CurrentMusicKit.PlayMusicToAll(Music_BombTenSecCount);
+	PlayAllClientMusicKits(Music_BombTenSecCount);
 }
 
 public Action Timer_DetonateBomb(Handle timer)
